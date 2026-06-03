@@ -99,6 +99,19 @@ outputs/qwen2.5-1.5b-gsm8k-grpo-a30-100step
 utd-a30-qwen25-15b-gsm8k-grpo-100step
 ```
 
+To queue an H100 experiment with a larger GRPO group:
+
+```bash
+sbatch --export=ALL scripts/utd_grpo_h100_8gen.slurm
+```
+
+The 8-generation job uses:
+
+```text
+outputs/qwen2.5-1.5b-gsm8k-grpo-h100-8gen-100step
+utd-h100-qwen25-15b-gsm8k-grpo-8gen-100step
+```
+
 Monitor:
 
 ```bash
