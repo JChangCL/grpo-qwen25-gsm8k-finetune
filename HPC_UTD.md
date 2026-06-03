@@ -123,6 +123,21 @@ utd-h100-qwen25-15b-gsm8k-grpo-8gen-100step
 time limit: 3 hours
 ```
 
+To queue a stronger H100 run intended to better match the AMD-style reward curves:
+
+```bash
+sbatch --export=ALL scripts/utd_grpo_h100_8gen_strong_reward.slurm
+```
+
+This run uses a larger completion length, slightly higher learning rate, and reward weights:
+
+```text
+learning_rate: 2e-6
+num_generations: 8
+max_completion_length: 256
+reward_weights: correctness=2.0, soft_format=1.0, strict_format=2.0, numeric=0.5
+```
+
 Monitor:
 
 ```bash

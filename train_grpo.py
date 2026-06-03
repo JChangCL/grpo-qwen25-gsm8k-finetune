@@ -137,6 +137,8 @@ class TrainConfig:
     max_prompt_length: int
     max_completion_length: int
     beta: float
+    reward_weights: list[float] | None
+    scale_rewards: bool
     warmup_ratio: float
     logging_steps: int
     save_steps: int
@@ -172,6 +174,14 @@ def parse_args() -> TrainConfig:
     parser.add_argument("--max_prompt_length", type=int, default=512)
     parser.add_argument("--max_completion_length", type=int, default=192)
     parser.add_argument("--beta", type=float, default=0.04)
+    parser.add_argument(
+        "--reward_weights",
+        type=float,
+        nargs=4,
+        default=None,
+        help="Weights for correctness, soft format, strict format, and numeric answer rewards.",
+    )
+    parser.add_argument("--scale_rewards", type=str_to_bool, default=True)
     parser.add_argument("--warmup_ratio", type=float, default=0.1)
     parser.add_argument("--logging_steps", type=int, default=1)
     parser.add_argument("--save_steps", type=int, default=25)
@@ -226,6 +236,8 @@ def main() -> None:
         lr_scheduler_type="cosine",
         warmup_ratio=args.warmup_ratio,
         beta=args.beta,
+        reward_weights=args.reward_weights,
+        scale_rewards=args.scale_rewards,
         per_device_train_batch_size=args.per_device_train_batch_size,
         gradient_accumulation_steps=args.gradient_accumulation_steps,
         num_generations=args.num_generations,
