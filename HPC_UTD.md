@@ -110,6 +110,7 @@ The 8-generation job uses:
 ```text
 outputs/qwen2.5-1.5b-gsm8k-grpo-h100-8gen-100step
 utd-h100-qwen25-15b-gsm8k-grpo-8gen-100step
+time limit: 3 hours
 ```
 
 Monitor:
