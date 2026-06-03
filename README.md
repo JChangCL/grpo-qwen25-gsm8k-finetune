@@ -40,6 +40,8 @@ AMD 原文使用 `Qwen/Qwen2.5-1.5B-Instruct`、GSM8K、TRL GRPO、vLLM、Accele
 !pip install -r requirements-colab.txt
 ```
 
+如果 Colab 已經載入過 `transformers`，降版安裝後建議 `Runtime > Restart runtime`，再從 `%cd`、login、mount Drive 開始重跑。
+
 登入 Hugging Face 和 W&B：
 
 ```python
