@@ -65,9 +65,9 @@ drive.mount("/content/drive")
   --output_dir outputs/qwen2.5-1.5b-gsm8k-grpo \
   --max_samples 256 \
   --max_steps 50 \
-  --per_device_train_batch_size 1 \
+  --per_device_train_batch_size 2 \
   --gradient_accumulation_steps 4 \
-  --num_generations 4 \
+  --num_generations 2 \
   --fp16 true \
   --bf16 false \
   --use_lora true \
@@ -101,9 +101,9 @@ drive.mount("/content/drive")
   --output_dir outputs/qwen2.5-1.5b-gsm8k-grpo-200step \
   --max_samples 2000 \
   --max_steps 200 \
-  --per_device_train_batch_size 1 \
+  --per_device_train_batch_size 2 \
   --gradient_accumulation_steps 8 \
-  --num_generations 4 \
+  --num_generations 2 \
   --fp16 true \
   --use_lora true \
   --report_to wandb \
