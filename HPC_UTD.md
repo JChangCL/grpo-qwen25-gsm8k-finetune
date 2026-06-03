@@ -33,7 +33,23 @@ sinfo
 sinfo -o "%P %D %G %m %l"
 ```
 
-Find the GPU partition name, then edit:
+For the Juno output shown on June 3, 2026, useful GPU partitions are:
+
+```text
+h100       gpu:nvidia_h100_80gb_hbm3 or gpu:nvidia_h100_nvl
+a30        gpu:nvidia_a30
+a30-2.12gb MIG slice, 12GB
+a30-4.6gb  MIG slice, 6GB
+```
+
+Use `h100` for this GRPO run when available. The included script already uses:
+
+```bash
+#SBATCH --partition=h100
+#SBATCH --gres=gpu:1
+```
+
+If the partition changes later, edit:
 
 ```bash
 nano scripts/utd_grpo_1gpu.slurm

@@ -1,6 +1,6 @@
 #!/bin/bash
 #SBATCH --job-name=grpo-qwen15b
-#SBATCH --partition=REPLACE_WITH_GPU_PARTITION
+#SBATCH --partition=h100
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=16
@@ -24,9 +24,9 @@ export WANDB_PROJECT="${WANDB_PROJECT:-grpo-gsm8k-simulation}"
 
 # Optional: load modules if UTD's cluster provides them.
 # Run `module avail python`, `module avail cuda`, and edit these lines if needed.
-# module purge
-# module load python/3.11
-# module load cuda/12.4
+module purge
+module load python/3.11.11
+module load cuda/12.4
 
 if [ ! -d ".venv" ]; then
   python3 -m venv .venv
