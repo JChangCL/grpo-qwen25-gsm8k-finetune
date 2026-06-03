@@ -36,6 +36,7 @@ AMD 原文使用 `Qwen/Qwen2.5-1.5B-Instruct`、GSM8K、TRL GRPO、vLLM、Accele
 ```bash
 !git clone https://github.com/YOUR_NAME/YOUR_REPO.git
 %cd YOUR_REPO
+!pip uninstall -y torchao
 !pip install -r requirements-colab.txt
 ```
 
