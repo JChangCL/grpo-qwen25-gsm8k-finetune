@@ -1,0 +1,103 @@
+# Running on UTD HPC
+
+This guide adapts the Colab GRPO run to UTD HPC with Slurm.
+
+Official UTD references:
+
+- UTD HPC home: https://hpc.utdallas.edu/
+- Juno system: https://hpc.utdallas.edu/systems-resources/juno/
+- CIRC Slurm submitting workloads guide: https://docs.circ.utdallas.edu/user-guide/intro-to-hpc/submitting-jobs.html
+- CIRC connecting guide: https://docs.circ.utdallas.edu/user-guide/intro-to-hpc/connecting.html
+
+## 1. Connect
+
+You must be on the UTD VPN before SSH.
+
+```bash
+ssh YOUR_NETID@ganymede.utdallas.edu
+```
+
+For Juno, use the hostname/account instructions provided by UTD HPC after your account is approved.
+
+## 2. Clone the repo
+
+```bash
+git clone https://github.com/JChangCL/grpo-qwen25-gsm8k-finetune.git
+cd grpo-qwen25-gsm8k-finetune
+```
+
+## 3. Check GPU partitions
+
+```bash
+sinfo
+sinfo -o "%P %D %G %m %l"
+```
+
+Find the GPU partition name, then edit:
+
+```bash
+nano scripts/utd_grpo_1gpu.slurm
+```
+
+Replace:
+
+```bash
+#SBATCH --partition=REPLACE_WITH_GPU_PARTITION
+```
+
+with the real GPU partition shown by `sinfo`.
+
+## 4. Set secrets
+
+Do not put tokens in the Slurm script. Export them before `sbatch`:
+
+```bash
+export WANDB_API_KEY="YOUR_NEW_WANDB_KEY"
+export HF_TOKEN="YOUR_HF_READ_TOKEN"
+```
+
+If your shell does not export these into Slurm jobs, use:
+
+```bash
+sbatch --export=ALL scripts/utd_grpo_1gpu.slurm
+```
+
+## 5. Submit
+
+```bash
+sbatch --export=ALL scripts/utd_grpo_1gpu.slurm
+```
+
+The script creates a local `.venv`, installs the Python dependencies, checks whether PyTorch is available, and installs `torch` if needed. If UTD provides a preferred PyTorch module, edit `scripts/utd_grpo_1gpu.slurm` and load that module before the install section.
+
+Monitor:
+
+```bash
+squeue -u $USER
+tail -f logs/grpo-qwen15b-JOBID.out
+tail -f logs/grpo-qwen15b-JOBID.err
+```
+
+Cancel if needed:
+
+```bash
+scancel JOBID
+```
+
+## 6. Retrieve results
+
+The job writes checkpoints and a tarball under:
+
+```text
+outputs/
+logs/
+outputs/grpo-hpc-results-JOBID.tar.gz
+```
+
+Copy results back to your local machine with:
+
+```bash
+scp YOUR_NETID@ganymede.utdallas.edu:/path/to/grpo-qwen25-gsm8k-finetune/outputs/grpo-hpc-results-JOBID.tar.gz .
+```
+
+Or move them to the HPC storage location recommended by your PI/group.
