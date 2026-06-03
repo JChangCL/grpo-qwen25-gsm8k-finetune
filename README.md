@@ -49,6 +49,13 @@ import wandb
 wandb.login()
 ```
 
+掛載 Google Drive，方便訓練後備份 checkpoint 和 logs：
+
+```python
+from google.colab import drive
+drive.mount("/content/drive")
+```
+
 跑 simulation：
 
 ```bash
@@ -73,6 +80,14 @@ wandb.login()
 !python eval_gsm8k.py \
   --model_name_or_path outputs/qwen2.5-1.5b-gsm8k-grpo \
   --max_samples 100
+```
+
+備份結果到 Google Drive：
+
+```bash
+!mkdir -p /content/drive/MyDrive/grpo-qwen25-gsm8k-finetune
+!tar -czf /content/drive/MyDrive/grpo-qwen25-gsm8k-finetune/grpo-results-$(date +%Y%m%d-%H%M%S).tar.gz \
+  outputs wandb
 ```
 
 ## Closer to the AMD Reference
