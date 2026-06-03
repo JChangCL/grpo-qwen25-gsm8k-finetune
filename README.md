@@ -36,11 +36,11 @@ AMD 原文使用 `Qwen/Qwen2.5-1.5B-Instruct`、GSM8K、TRL GRPO、vLLM、Accele
 ```bash
 !git clone https://github.com/YOUR_NAME/YOUR_REPO.git
 %cd YOUR_REPO
-!pip uninstall -y torchao
+!pip uninstall -y torchao timm
 !pip install -r requirements-colab.txt
 ```
 
-如果 Colab 已經載入過 `transformers`，降版安裝後建議 `Runtime > Restart runtime`，再從 `%cd`、login、mount Drive 開始重跑。
+不要用 `--force-reinstall`，也不要手動安裝 `torch`。Colab 會預裝相容的 PyTorch/CUDA 組合；覆蓋它很容易造成 `torchvision` 或 CUDA 套件版本衝突。如果已經覆蓋過，建議 `Runtime > Disconnect and delete runtime`，重新開一個乾淨 GPU runtime，再從 clone/install 開始。
 
 登入 Hugging Face 和 W&B：
 
