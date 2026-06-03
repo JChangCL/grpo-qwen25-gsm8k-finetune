@@ -53,21 +53,21 @@ PY
 
 accelerate launch --config_file configs/accelerate_config.yaml train_grpo.py \
   --model_name_or_path Qwen/Qwen2.5-1.5B-Instruct \
-  --output_dir outputs/qwen2.5-1.5b-gsm8k-grpo-hpc-200step \
+  --output_dir outputs/qwen2.5-1.5b-gsm8k-grpo-hpc-8gen-200step \
   --max_samples 2000 \
   --max_steps 200 \
-  --per_device_train_batch_size 4 \
-  --gradient_accumulation_steps 4 \
-  --num_generations 4 \
-  --max_completion_length 256 \
+  --per_device_train_batch_size 8 \
+  --gradient_accumulation_steps 2 \
+  --num_generations 8 \
+  --max_completion_length 192 \
   --fp16 true \
   --bf16 false \
   --use_lora true \
   --report_to wandb \
-  --run_name utd-hpc-qwen25-15b-gsm8k-grpo-200step
+  --run_name utd-hpc-qwen25-15b-gsm8k-grpo-8gen-200step
 
 python eval_gsm8k.py \
-  --model_name_or_path outputs/qwen2.5-1.5b-gsm8k-grpo-hpc-200step \
+  --model_name_or_path outputs/qwen2.5-1.5b-gsm8k-grpo-hpc-8gen-200step \
   --max_samples 100
 
 tar -czf "outputs/grpo-hpc-results-${SLURM_JOB_ID}.tar.gz" outputs logs .cache/wandb

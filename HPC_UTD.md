@@ -86,6 +86,16 @@ sbatch --export=ALL scripts/utd_grpo_1gpu.slurm
 
 The script creates a local `.venv`, installs the Python dependencies, checks whether PyTorch is available, and installs `torch` if needed. If UTD provides a preferred PyTorch module, edit `scripts/utd_grpo_1gpu.slurm` and load that module before the install section.
 
+The main H100 job uses:
+
+```text
+outputs/qwen2.5-1.5b-gsm8k-grpo-hpc-8gen-200step
+utd-hpc-qwen25-15b-gsm8k-grpo-8gen-200step
+num_generations: 8
+max_steps: 200
+time limit: 8 hours
+```
+
 To also queue a smaller A30 run while the H100 job is pending:
 
 ```bash
