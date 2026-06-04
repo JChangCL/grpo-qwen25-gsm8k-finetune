@@ -1,8 +1,9 @@
 import argparse
-import re
+import os
 
 import torch
 from datasets import load_dataset
+from peft import PeftConfig, PeftModel
 from tqdm import tqdm
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
@@ -23,15 +24,28 @@ def main() -> None:
     parser.add_argument("--device", default="cuda" if torch.cuda.is_available() else "cpu")
     args = parser.parse_args()
 
-    tokenizer = AutoTokenizer.from_pretrained(args.model_name_or_path, trust_remote_code=True)
+    model_name_or_path = args.model_name_or_path
+    adapter_config_path = os.path.join(model_name_or_path, "adapter_config.json")
+    is_peft_adapter = os.path.exists(adapter_config_path)
+
+    if is_peft_adapter:
+        peft_config = PeftConfig.from_pretrained(model_name_or_path)
+        tokenizer_source = peft_config.base_model_name_or_path
+    else:
+        peft_config = None
+        tokenizer_source = model_name_or_path
+
+    tokenizer = AutoTokenizer.from_pretrained(tokenizer_source, trust_remote_code=True)
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
 
     model = AutoModelForCausalLM.from_pretrained(
-        args.model_name_or_path,
+        peft_config.base_model_name_or_path if is_peft_adapter else model_name_or_path,
         torch_dtype=torch.float16 if args.device == "cuda" else torch.float32,
         trust_remote_code=True,
     ).to(args.device)
+    if is_peft_adapter:
+        model = PeftModel.from_pretrained(model, model_name_or_path).to(args.device)
     model.eval()
 
     dataset = load_dataset("openai/gsm8k", "main", split=args.split)
