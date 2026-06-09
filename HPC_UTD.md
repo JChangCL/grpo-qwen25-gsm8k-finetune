@@ -138,6 +138,26 @@ max_completion_length: 256
 reward_weights: correctness=2.0, soft_format=1.0, strict_format=2.0, numeric=0.5
 ```
 
+## Recommended Multi-Run Sweep
+
+For one-H100-at-a-time training, prefer complete 4-generation runs over oversized 8-generation runs that may hit the time limit.
+
+```bash
+sbatch --export=ALL scripts/utd_grpo_h100_4gen_safe.slurm
+sbatch --export=ALL scripts/utd_grpo_h100_4gen_strong_reward.slurm
+sbatch --export=ALL scripts/utd_grpo_h100_4gen_format_heavy.slurm
+sbatch --export=ALL scripts/utd_grpo_h100_4gen_long_strong.slurm
+```
+
+Suggested interpretation:
+
+```text
+4gen_safe: clean baseline that should finish.
+4gen_strong_reward: best first bet for improvement.
+4gen_format_heavy: checks whether strict XML formatting can be learned.
+4gen_long_strong: longer run after the strong-reward setting looks promising.
+```
+
 Monitor:
 
 ```bash
