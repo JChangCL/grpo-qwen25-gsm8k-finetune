@@ -158,6 +158,23 @@ Suggested interpretation:
 4gen_long_strong: longer run after the strong-reward setting looks promising.
 ```
 
+If you want one expensive long-running 8-generation job, submit only one of these:
+
+```bash
+sbatch --export=ALL scripts/utd_grpo_h100_8gen_2day_strong.slurm
+```
+
+This requests the full H100 partition wall-time limit:
+
+```text
+time limit: 2 days
+num_generations: 8
+max_steps: 200
+max_completion_length: 256
+reward_weights: 2.0 1.0 2.0 0.5
+save_steps: 10
+```
+
 Monitor:
 
 ```bash
