@@ -151,6 +151,25 @@ sbatch --export=ALL scripts/utd_grpo_h100_4gen_complete_100.slurm
 
 Use `2gen_complete_100` when you mainly need one full 100-step result. Use `4gen_complete_100` when you can afford a longer run and want a more GRPO-like group size.
 
+After a successful 4-generation run, the next best tuning candidate is LoRA rank 32 with the strong reward setting:
+
+```bash
+sbatch --export=ALL scripts/utd_grpo_h100_4gen_r32_strong_150.slurm
+```
+
+This uses:
+
+```text
+num_generations: 4
+max_steps: 150
+max_completion_length: 128
+learning_rate: 2e-6
+lora_r: 32
+lora_alpha: 64
+reward_weights: 2.0 1.0 2.0 0.5
+time limit: 1 day
+```
+
 ```bash
 sbatch --export=ALL scripts/utd_grpo_h100_4gen_safe.slurm
 sbatch --export=ALL scripts/utd_grpo_h100_4gen_strong_reward.slurm
