@@ -142,6 +142,15 @@ reward_weights: correctness=2.0, soft_format=1.0, strict_format=2.0, numeric=0.5
 
 For one-H100-at-a-time training, prefer complete 4-generation runs over oversized 8-generation runs that may hit the time limit.
 
+If prior runs show CUDA driver mismatch or CPU-like speed, first use the complete-run scripts. They install PyTorch 2.6.0 from the CUDA 12.4 wheel index and refuse to train if CUDA is unavailable.
+
+```bash
+sbatch --export=ALL scripts/utd_grpo_h100_2gen_complete_100.slurm
+sbatch --export=ALL scripts/utd_grpo_h100_4gen_complete_100.slurm
+```
+
+Use `2gen_complete_100` when you mainly need one full 100-step result. Use `4gen_complete_100` when you can afford a longer run and want a more GRPO-like group size.
+
 ```bash
 sbatch --export=ALL scripts/utd_grpo_h100_4gen_safe.slurm
 sbatch --export=ALL scripts/utd_grpo_h100_4gen_strong_reward.slurm
