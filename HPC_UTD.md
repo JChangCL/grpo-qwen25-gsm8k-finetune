@@ -170,6 +170,15 @@ reward_weights: 2.0 1.0 2.0 0.5
 time limit: 1 day
 ```
 
+Two additional follow-up variants:
+
+```bash
+sbatch --export=ALL scripts/utd_grpo_h100_4gen_r32_strong_200.slurm
+sbatch --export=ALL scripts/utd_grpo_h100_4gen_r16_strong_192_150.slurm
+```
+
+Use `r32_strong_200` to test whether the successful rank-32 setting improves with more steps. Use `r16_strong_192_150` to test whether longer completions matter more than higher LoRA rank.
+
 ```bash
 sbatch --export=ALL scripts/utd_grpo_h100_4gen_safe.slurm
 sbatch --export=ALL scripts/utd_grpo_h100_4gen_strong_reward.slurm
