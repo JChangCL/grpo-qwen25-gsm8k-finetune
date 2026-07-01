@@ -142,6 +142,7 @@ class TrainConfig:
     warmup_ratio: float
     logging_steps: int
     save_steps: int
+    save_total_limit: int
     report_to: str
     run_name: str | None
     seed: int
@@ -185,6 +186,7 @@ def parse_args() -> TrainConfig:
     parser.add_argument("--warmup_ratio", type=float, default=0.1)
     parser.add_argument("--logging_steps", type=int, default=1)
     parser.add_argument("--save_steps", type=int, default=25)
+    parser.add_argument("--save_total_limit", type=int, default=10)
     parser.add_argument("--report_to", default="wandb")
     parser.add_argument("--run_name", default=None)
     parser.add_argument("--seed", type=int, default=42)
@@ -248,7 +250,7 @@ def main() -> None:
         gradient_checkpointing=True,
         logging_steps=args.logging_steps,
         save_steps=args.save_steps,
-        save_total_limit=2,
+        save_total_limit=args.save_total_limit,
         log_completions=True,
         remove_unused_columns=False,
         use_vllm=args.use_vllm,

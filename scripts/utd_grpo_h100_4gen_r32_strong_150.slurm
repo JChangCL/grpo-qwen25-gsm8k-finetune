@@ -37,6 +37,7 @@ accelerate launch --config_file configs/accelerate_config.yaml train_grpo.py \
   --lora_r 32 \
   --lora_alpha 64 \
   --save_steps 10 \
+  --save_total_limit 10 \
   --fp16 true \
   --bf16 false \
   --use_lora true \
