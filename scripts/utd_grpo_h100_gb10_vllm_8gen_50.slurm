@@ -23,12 +23,18 @@ export WANDB_PROJECT="${WANDB_PROJECT:-grpo-gsm8k-simulation}"
 
 VLLM_SERVER_HOST="${VLLM_SERVER_HOST:-10.180.72.205}"
 VLLM_SERVER_PORT="${VLLM_SERVER_PORT:-8000}"
+EXPECTED_VLLM_MODEL="${EXPECTED_VLLM_MODEL:-Qwen/Qwen2.5-1.5B-Instruct}"
 
 echo "Checking GB10 vLLM server at http://${VLLM_SERVER_HOST}:${VLLM_SERVER_PORT}/v1/models"
 curl -fsS "http://${VLLM_SERVER_HOST}:${VLLM_SERVER_PORT}/v1/models"
 echo
 
-source scripts/setup_juno_env.sh
+python scripts/check_trl_vllm_server.py \
+  --host "${VLLM_SERVER_HOST}" \
+  --port "${VLLM_SERVER_PORT}" \
+  --expected-model "${EXPECTED_VLLM_MODEL}"
+
+source scripts/setup_juno_env_vllm.sh
 
 accelerate launch --config_file configs/accelerate_config.yaml train_grpo.py \
   --model_name_or_path Qwen/Qwen2.5-1.5B-Instruct \

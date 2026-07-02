@@ -43,7 +43,12 @@ if expected not in ids:
     raise SystemExit(f"Expected GB10 to serve {expected!r}, got {ids!r}. Restart GB10 with the base model before training.")
 PY
 
-source scripts/setup_juno_env.sh
+python scripts/check_trl_vllm_server.py \
+  --host "${VLLM_SERVER_HOST}" \
+  --port "${VLLM_SERVER_PORT}" \
+  --expected-model "${EXPECTED_VLLM_MODEL}"
+
+source scripts/setup_juno_env_vllm.sh
 
 accelerate launch --config_file configs/accelerate_config.yaml train_grpo.py \
   --model_name_or_path Qwen/Qwen2.5-1.5B-Instruct \
