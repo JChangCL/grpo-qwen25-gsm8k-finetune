@@ -4,9 +4,10 @@ import json
 import sys
 import urllib.error
 import urllib.request
+from typing import Any, Dict, Optional
 
 
-def request_json(url: str, payload: dict | None = None, timeout: float = 20.0) -> dict:
+def request_json(url: str, payload: Optional[Dict[str, Any]] = None, timeout: float = 20.0) -> Dict[str, Any]:
     data = None
     headers = {}
     if payload is not None:
