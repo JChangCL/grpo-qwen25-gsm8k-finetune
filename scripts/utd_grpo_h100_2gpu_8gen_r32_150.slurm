@@ -40,6 +40,7 @@ accelerate launch --config_file configs/accelerate_config_2gpu.yaml train_grpo.p
   --save_total_limit 10 \
   --fp16 true \
   --bf16 false \
+  --gradient_checkpointing false \
   --use_lora true \
   --report_to wandb \
   --run_name utd-h100-qwen25-15b-gsm8k-grpo-2gpu-8gen-r32-strong-150step

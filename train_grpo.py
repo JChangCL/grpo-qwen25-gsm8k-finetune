@@ -148,6 +148,7 @@ class TrainConfig:
     seed: int
     bf16: bool
     fp16: bool
+    gradient_checkpointing: bool
     use_lora: bool
     lora_r: int
     lora_alpha: int
@@ -192,6 +193,7 @@ def parse_args() -> TrainConfig:
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--bf16", type=str_to_bool, default=False)
     parser.add_argument("--fp16", type=str_to_bool, default=True)
+    parser.add_argument("--gradient_checkpointing", type=str_to_bool, default=True)
     parser.add_argument("--use_lora", type=str_to_bool, default=True)
     parser.add_argument("--lora_r", type=int, default=16)
     parser.add_argument("--lora_alpha", type=int, default=32)
@@ -247,7 +249,7 @@ def main() -> None:
         max_completion_length=args.max_completion_length,
         bf16=args.bf16,
         fp16=args.fp16,
-        gradient_checkpointing=True,
+        gradient_checkpointing=args.gradient_checkpointing,
         logging_steps=args.logging_steps,
         save_steps=args.save_steps,
         save_total_limit=args.save_total_limit,
