@@ -1,0 +1,14 @@
+# GRPO training image for GB10 (aarch64 / Blackwell).
+# Builds on NVIDIA's NGC vLLM container (already has vllm + torch + transformers
+# tuned for GB10) and adds the TRL/PEFT training stack.
+FROM nvcr.io/nvidia/vllm:26.05.post1-py3
+
+# Pin the versions verified compatible with this vLLM/transformers build.
+RUN pip install --no-cache-dir \
+      trl==1.7.1 \
+      peft==0.19.1 \
+      wandb \
+      "datasets>=3.5.0" \
+      accelerate
+
+WORKDIR /workspace

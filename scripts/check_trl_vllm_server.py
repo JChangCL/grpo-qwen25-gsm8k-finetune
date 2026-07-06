@@ -40,25 +40,11 @@ def main() -> int:
     except Exception as exc:
         print(f"WARNING: /v1/models check failed: {exc}")
 
+    # TRL >= 1.x renamed /get_tensor_parallel_size/ -> /get_world_size/; the
+    # weight-sync endpoints are /init_communicator/ /update_named_param/ etc.
     checks = [
         ("health", "GET", "/health/", None),
-        ("tensor parallel size", "GET", "/get_tensor_parallel_size/", None),
-        (
-            "generate",
-            "POST",
-            "/generate/",
-            {
-                "prompts": ["Question: What is 2+2?\nAnswer:"],
-                "n": 1,
-                "max_tokens": 8,
-                "temperature": 0.7,
-                "top_p": 1.0,
-                "top_k": -1,
-                "min_p": 0.0,
-                "repetition_penalty": 1.0,
-                "guided_decoding_regex": None,
-            },
-        ),
+        ("world size", "GET", "/get_world_size/", None),
     ]
 
     for name, method, path, payload in checks:

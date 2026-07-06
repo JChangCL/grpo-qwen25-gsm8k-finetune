@@ -1,7 +1,7 @@
 import argparse
 import os
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, fields
 from typing import Any
 
 import torch
@@ -71,14 +71,24 @@ def build_prompt(question: str) -> str:
     return f"{SYSTEM_PROMPT}\n\nQuestion:\n{question}\n\nResponse:"
 
 
-def prepare_gsm8k(split: str, max_samples: int | None, seed: int) -> Dataset:
+def build_chat_prompt(question: str) -> list[dict[str, str]]:
+    # Conversational prompt: TRL applies the model's chat template, so an
+    # instruct model emits its end-of-turn token and completions terminate
+    # naturally (fixes clipped_ratio=1.0). Also aligns train with chat eval.
+    return [
+        {"role": "system", "content": SYSTEM_PROMPT},
+        {"role": "user", "content": f"Question:\n{question}\n\nResponse:"},
+    ]
+
+
+def prepare_gsm8k(split: str, max_samples: int | None, seed: int, chat_prompt: bool = True) -> Dataset:
     dataset = load_dataset("openai/gsm8k", "main", split=split)
     if max_samples:
         dataset = dataset.shuffle(seed=seed).select(range(min(max_samples, len(dataset))))
 
-    def convert(example: dict[str, str]) -> dict[str, str]:
+    def convert(example: dict[str, str]) -> dict[str, Any]:
         return {
-            "prompt": build_prompt(example["question"]),
+            "prompt": build_chat_prompt(example["question"]) if chat_prompt else build_prompt(example["question"]),
             "ground_truth": extract_gsm8k_answer(example["answer"]),
             "question": example["question"],
         }
@@ -128,6 +138,7 @@ class TrainConfig:
     output_dir: str
     dataset_split: str
     max_samples: int | None
+    chat_prompt: bool
     max_steps: int
     num_train_epochs: float
     learning_rate: float
@@ -138,7 +149,7 @@ class TrainConfig:
     max_completion_length: int
     beta: float
     reward_weights: list[float] | None
-    scale_rewards: bool
+    scale_rewards: str
     warmup_ratio: float
     logging_steps: int
     save_steps: int
@@ -154,6 +165,8 @@ class TrainConfig:
     lora_alpha: int
     lora_dropout: float
     use_vllm: bool
+    vllm_mode: str
+    vllm_gpu_memory_utilization: float
     vllm_server_host: str
     vllm_server_port: int
     deepspeed: str | None
@@ -167,6 +180,8 @@ def parse_args() -> TrainConfig:
     parser.add_argument("--output_dir", default="outputs/qwen2.5-1.5b-gsm8k-grpo")
     parser.add_argument("--dataset_split", default="train")
     parser.add_argument("--max_samples", type=int, default=256)
+    parser.add_argument("--chat_prompt", type=str_to_bool, default=True,
+                        help="Use the chat template for prompts so completions stop at EOS.")
     parser.add_argument("--max_steps", type=int, default=50)
     parser.add_argument("--num_train_epochs", type=float, default=1.0)
     parser.add_argument("--learning_rate", type=float, default=1e-6)
@@ -183,7 +198,11 @@ def parse_args() -> TrainConfig:
         default=None,
         help="Weights for correctness, soft format, strict format, and numeric answer rewards.",
     )
-    parser.add_argument("--scale_rewards", type=str_to_bool, default=True)
+    parser.add_argument(
+        "--scale_rewards",
+        default="group",
+        help="trl>=1.x expects a string: 'group', 'batch', or 'none'.",
+    )
     parser.add_argument("--warmup_ratio", type=float, default=0.1)
     parser.add_argument("--logging_steps", type=int, default=1)
     parser.add_argument("--save_steps", type=int, default=25)
@@ -199,6 +218,8 @@ def parse_args() -> TrainConfig:
     parser.add_argument("--lora_alpha", type=int, default=32)
     parser.add_argument("--lora_dropout", type=float, default=0.05)
     parser.add_argument("--use_vllm", type=str_to_bool, default=False)
+    parser.add_argument("--vllm_mode", default="server", choices=["server", "colocate"])
+    parser.add_argument("--vllm_gpu_memory_utilization", type=float, default=0.3)
     parser.add_argument("--vllm_server_host", default="0.0.0.0")
     parser.add_argument("--vllm_server_port", type=int, default=8000)
     parser.add_argument("--deepspeed", default=None)
@@ -211,7 +232,7 @@ def main() -> None:
     args = parse_args()
     os.environ.setdefault("WANDB_PROJECT", "grpo-gsm8k-simulation")
 
-    train_dataset = prepare_gsm8k(args.dataset_split, args.max_samples, args.seed)
+    train_dataset = prepare_gsm8k(args.dataset_split, args.max_samples, args.seed, args.chat_prompt)
 
     tokenizer = AutoTokenizer.from_pretrained(args.model_name_or_path, trust_remote_code=True)
     tokenizer.padding_side = "left"
@@ -229,10 +250,10 @@ def main() -> None:
             target_modules=["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"],
         )
 
-    training_args = GRPOConfig(
+    config_kwargs = dict(
         output_dir=args.output_dir,
         run_name=args.run_name,
-        report_to=args.report_to if args.report_to.lower() != "none" else None,
+        report_to=args.report_to,
         seed=args.seed,
         max_steps=args.max_steps,
         num_train_epochs=args.num_train_epochs,
@@ -241,11 +262,11 @@ def main() -> None:
         warmup_ratio=args.warmup_ratio,
         beta=args.beta,
         reward_weights=args.reward_weights,
-        scale_rewards=args.scale_rewards,
+        # scale_rewards omitted: its type changed across TRL versions (bool ->
+        # str). Use TRL's default so this script works on both 0.17 and 1.7.
         per_device_train_batch_size=args.per_device_train_batch_size,
         gradient_accumulation_steps=args.gradient_accumulation_steps,
         num_generations=args.num_generations,
-        max_prompt_length=args.max_prompt_length,
         max_completion_length=args.max_completion_length,
         bf16=args.bf16,
         fp16=args.fp16,
@@ -256,8 +277,7 @@ def main() -> None:
         log_completions=True,
         remove_unused_columns=False,
         use_vllm=args.use_vllm,
-        vllm_server_host=args.vllm_server_host,
-        vllm_server_port=args.vllm_server_port,
+        vllm_gpu_memory_utilization=args.vllm_gpu_memory_utilization,
         deepspeed=args.deepspeed,
         push_to_hub=args.push_to_hub,
         hub_model_id=args.hub_model_id,
@@ -266,6 +286,26 @@ def main() -> None:
             "trust_remote_code": True,
         },
     )
+
+    # vLLM rollout config differs across TRL versions:
+    #   - TRL >= ~1.x: vllm_mode="server"/"colocate" (+ vllm_server_host/port).
+    #   - TRL 0.17:    in-process colocate (no server host) or server via host/port.
+    # Build the intent, then keep only fields the installed GRPOConfig supports.
+    if args.use_vllm:
+        if args.vllm_mode == "server":
+            config_kwargs["vllm_mode"] = "server"
+            config_kwargs["vllm_server_host"] = args.vllm_server_host
+            config_kwargs["vllm_server_port"] = args.vllm_server_port
+        else:  # colocate: leave server host unset so TRL 0.17 runs vLLM in-process
+            config_kwargs["vllm_mode"] = "colocate"
+
+    supported = {f.name for f in fields(GRPOConfig)}
+    dropped = sorted(set(config_kwargs) - supported)
+    if dropped:
+        print(f"[train_grpo] dropping GRPOConfig kwargs unsupported by this TRL: {dropped}")
+    config_kwargs = {k: v for k, v in config_kwargs.items() if k in supported}
+
+    training_args = GRPOConfig(**config_kwargs)
 
     trainer = GRPOTrainer(
         model=args.model_name_or_path,
