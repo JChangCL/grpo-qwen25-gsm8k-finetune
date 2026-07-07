@@ -39,10 +39,16 @@ def last_boxed(text: str) -> str:
 
 
 def is_correct(pred_text: str, gold: str) -> bool:
-    """True if the model's answer matches the reference (math-equivalent)."""
+    """True if the model's answer matches the reference (math-equivalent).
+
+    The gold is a bare answer string (e.g. ``\\dfrac{7}{20}``); math_verify only
+    parses it as LaTeX math when it is delimited, so wrap it in \\boxed{} first.
+    """
     if _HAS_MV:
         try:
-            return bool(_mv_verify(_mv_parse(gold), _mv_parse(pred_text)))
+            g = str(gold)
+            gold_expr = g if ("\\boxed" in g or "$" in g) else f"\\boxed{{{g}}}"
+            return bool(_mv_verify(_mv_parse(gold_expr), _mv_parse(pred_text)))
         except Exception:
             return False
     pred = last_boxed(pred_text).strip().replace(" ", "")

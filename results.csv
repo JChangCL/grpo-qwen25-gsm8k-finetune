@@ -21,3 +21,5 @@ juno-h100-r32-8gen-300s-c512-lr5e6-b03-rw3,chat-c512-b03-lr5e6-300s,grpo,juno_vl
 juno-h100-r32-8gen-300s-c512-lr5e6-b03-rw3,chat-c512-b03-lr5e6-300s,grpo,juno_plain_greedy,500,341,0.6820,264046,merged,nymhqisx,2026-07-06,"Run4 plain protocol: +1.6pt vs base (AMD-style gain)"
 base-qwen25-15b,base,base,juno_vllm_chat_greedy,1319,917,0.6952,,,,2026-07-06,"FULL 1319 test base"
 juno-h100-r32-8gen-300s-c512-lr5e6-b03-rw3,chat-c512-b03-lr5e6-300s,grpo,juno_vllm_chat_greedy,1319,940,0.7127,264046,merged,nymhqisx,2026-07-06,"Run4 FULL 1319: 69.52->71.27 = +1.75pt CONFIRMED (best defensible result)"
+base-qwen25-15b,base,base,math500_vllm_chat_greedy,500,278,0.5560,264570,,,2026-07-07,"MATH-500 base (fixed is_correct; was 45.6% under LaTeX bug)"
+juno-h100-math-r32-8gen-300s-c1024-v2,math-c1024-b03-lr5e6,grpo,math500_vllm_chat_greedy,500,274,0.5480,264569,merged,qcroxolu,2026-07-07,"MATH GRPO v2 (fixed reward, train corr 0.625) but KL~0.0014 => ~=base"
