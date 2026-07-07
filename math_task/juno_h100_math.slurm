@@ -27,7 +27,9 @@ export TOKENIZERS_PARALLELISM=false
 PYINC=$(find /opt/ohpc/pub/apps -name Python.h -path '*3.11*' -print -quit 2>/dev/null | xargs -r dirname || true)
 export CPATH="${PYINC}:${CPATH:-}"
 export C_INCLUDE_PATH="${PYINC}:${C_INCLUDE_PATH:-}"
-export RANK=0 LOCAL_RANK=0 WORLD_SIZE=1 MASTER_ADDR=127.0.0.1 MASTER_PORT=29500
+export RANK=0 LOCAL_RANK=0 WORLD_SIZE=1 MASTER_ADDR=127.0.0.1
+# Unique port per job so co-scheduled jobs on one node do not collide (EADDRINUSE on 29500).
+export MASTER_PORT=$(( 20000 + (SLURM_JOB_ID % 40000) ))
 
 DATASET="${DATASET:-nlile/hendrycks-MATH-benchmark}"
 MAX_STEPS="${MAX_STEPS:-300}"; LR="${LR:-5e-6}"; BETA="${BETA:-0.03}"
