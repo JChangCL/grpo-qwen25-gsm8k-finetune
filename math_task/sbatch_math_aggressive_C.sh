@@ -41,7 +41,7 @@ export RANK=0 LOCAL_RANK=0 WORLD_SIZE=1 MASTER_ADDR=127.0.0.1 MASTER_PORT=29500
 echo ">>> triton python headers: ${PYINC:-NOT FOUND}"
 
 # --- Run MATH-C hyperparameters (aggressive matrix) -------------------------
-DATASET="hendrycks/competition_math"
+DATASET="nlile/hendrycks-MATH-benchmark"
 MAX_STEPS=500
 LR=2e-5
 BETA=0.01

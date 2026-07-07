@@ -99,7 +99,7 @@ class Cfg:
 def parse_args() -> Cfg:
     p = argparse.ArgumentParser()
     p.add_argument("--model_name_or_path", default="Qwen/Qwen2.5-1.5B-Instruct")
-    p.add_argument("--dataset_name", default="hendrycks/competition_math")
+    p.add_argument("--dataset_name", default="nlile/hendrycks-MATH-benchmark")
     p.add_argument("--dataset_split", default="train")
     p.add_argument("--output_dir", default="outputs/qwen2.5-1.5b-math-grpo")
     p.add_argument("--max_samples", type=int, default=4000)
