@@ -110,10 +110,14 @@ Fill in the results table as jobs finish:
 |-----|-----|---:|------------:|-------:|---------:|--------:|----------:|:--------:|:----------:|:-------:|
 | base | 264570 | — | — | — | — | — | — | 55.6% | 0 | ref |
 | v2   | 264569 | 0.0014 | 0.625 | — | — | — | — | 54.8% | −0.8 | frozen |
-| A    |  |  |  |  |  |  |  |  |  |  |
-| B    |  |  |  |  |  |  |  |  |  |  |
-| C    |  |  |  |  |  |  |  |  |  |  |
-| D    |  |  |  |  |  |  |  |  |  |  |
+| A    | 265834 |  |  |  |  |  |  |  |  | submitted |
+| B    | 265833 |  |  |  |  |  |  |  |  | submitted |
+| C    | 265835 |  |  |  |  |  |  |  |  | submitted |
+| D    | 265836 |  |  |  |  |  |  |  |  | submitted |
+
+**Submitted** 2026-07-07 (Juno H100, jobs 265833–265836). W&B in **offline** mode
+(no API key was available at submit time) — metrics log to local `wandb/` on juno;
+run `wandb sync wandb/offline-run-*` once a key is set to push them online.
 
 ---
 
