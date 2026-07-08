@@ -106,18 +106,42 @@ Pulled from W&B (project `grpo-gsm8k-simulation`) — TRL logs these each step:
 
 Fill in the results table as jobs finish:
 
-| Run | job | KL | corr_reward | reward | mean_len | clipped | grad_norm | MATH-500 | Δ vs 55.6% | verdict |
-|-----|-----|---:|------------:|-------:|---------:|--------:|----------:|:--------:|:----------:|:-------:|
-| base | 264570 | — | — | — | — | — | — | 55.6% | 0 | ref |
-| v2   | 264569 | 0.0014 | 0.625 | — | — | — | — | 54.8% | −0.8 | frozen |
-| A    | 265834 |  |  |  |  |  |  |  |  | submitted |
-| B    | 265833 |  |  |  |  |  |  |  |  | submitted |
-| C    | 265835 |  |  |  |  |  |  |  |  | submitted |
-| D    | 265836 |  |  |  |  |  |  |  |  | submitted |
+Training metrics = mean over the last 20 logged steps (from each run's
+`trainer_state.json`; regenerate with `math_task/summarize_runs.py`).
 
-**Submitted** 2026-07-07 (Juno H100, jobs 265833–265836). W&B in **offline** mode
-(no API key was available at submit time) — metrics log to local `wandb/` on juno;
-run `wandb sync wandb/offline-run-*` once a key is set to push them online.
+| Run | job | KL | KLmax | corr_reward | reward | mean_len | clipped | grad_norm | MATH-500 | Δ vs 55.6% | verdict |
+|-----|-----|---:|------:|------------:|-------:|---------:|--------:|----------:|:--------:|:----------:|:-------:|
+| base | 264570 | — | — | — | — | — | — | — | 55.6% | 0 | ref |
+| v2   | 264569 | 0.0014 | — | 0.625 | — | — | — | — | 54.8% | −0.8 | frozen |
+| **A** | 265851 | **0.0036** | 1.65 | 0.419 | 1.067 | 551 | 0.084 | 0.12 | *pending* | *eval* | KL↑ (mildest) |
+| **B** | 265887 | **0.0068** | 5.9e6 ⚠ | 0.522 | 1.278 | 527 | 0.062 | 0.15 | *pending* | *eval* | KL in band; transient spike |
+| **C** | 265888 | **0.0100** | 0.16 | 0.519 | 1.273 | 494 | 0.053 | 0.15 | *pending* | *eval* | **KL in band, cleanest** |
+| **D** | 265889 | **0.0073** | 0.54 | 0.531 | 1.309 | 574 | 0.016 | 0.13 | *pending* | *eval* | KL in band; least truncation |
+
+**Submitted & completed** 2026-07-07 (Juno H100, colocate). Final job IDs
+**265851 / 265887 / 265888 / 265889** (three earlier attempts died: 265833–836 on
+a gated dataset name `hendrycks/competition_math` → fixed to
+`nlile/hendrycks-MATH-benchmark`; 265850/852/853 on a `MASTER_PORT=29500`
+EADDRINUSE collision when co-scheduled → fixed to a per-job port). W&B offline →
+synced to project `grpo-gsm8k-simulation`.
+
+**Training-signal readout (eval still pending — do NOT conclude yet):**
+- **KL condition of H1 is met.** KL rose from v2's 0.0014 to **0.0036 (A) / 0.0068
+  (B) / 0.0100 (C) / 0.0073 (D)** — B/C/D sit inside the target band [0.005–0.02],
+  monotonic with the loosened-beta / higher-lr recipe. The policy *moved* this time.
+- **C is the cleanest mover** (KL 0.010, KLmax 0.16, stable). **B had a transient KL
+  blow-up** (KLmax ≈ 5.9e6 at one step) but recovered to 0.0068 mean — watch B's
+  curve; if eval is erratic, prefer C's recipe.
+- corr_reward settled ~0.52 (B/C/D) vs A's 0.42; all below v2's 0.625, but v2's high
+  train reward came *without* moving off base — exactly the trap the plan warns about.
+- D (c1536) had the **lowest truncation** (clip 0.016 vs 0.05–0.08) and longest
+  completions (574) — the extra length budget was used, as hypothesized.
+- grad_norm stable (0.12–0.15 steady-state) across all four.
+
+**➡️ NEXT (the actual hypothesis test): merge each adapter and eval MATH-500.**
+Until we have eval accuracy vs base 55.6%, this only shows the policy *moved*, not
+that it moved to a *better* place. Run the merge→eval block below for A/B/C/D
+(start with C and D — highest KL / least truncation).
 
 ---
 

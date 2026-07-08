@@ -73,6 +73,39 @@ Harder task chosen because GSM8K is near-ceiling for 1.5B. Eval = MATH-500; trai
 
 **Interpretation:** the fix restored the *training* signal (corr 6%→62.5%), but eval still ≈ base because **KL≈0.0014 → the policy didn't move** (same failure mode as GSM8K Run3). On MATH the same β0.03/lr5e-6 moves *less* than on GSM8K (longer completions, sparser reward) → needs a more aggressive recipe to show a gain.
 
+### 4a. Aggressive MATH runs (A/B/C/D) — *did the policy move?* ✅ (eval pending)
+
+Recipe matrix from Improvement direction #1 (lower β, higher lr, more steps, longer
+completion), colocate on Juno H100. Scripts `math_task/sbatch_math_aggressive_{A,B,C,D}.sh`;
+plan + full table in `math_task/AGGRESSIVE_MATH_PLAN.md`. Metrics = mean(last-20 steps).
+
+| Run | Job | β | lr | steps | compl | **KL** | KLmax | corr (train) | clip | mean_len | grad_norm | MATH-500 |
+|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---|
+| v2 (ref) | 264569 | 0.03 | 5e-6 | 300 | 1024 | 0.0014 | — | 0.625 | — | — | — | 54.8% |
+| **A** | 265851 | 0.02 | 1e-5 | 400 | 1024 | **0.0036** | 1.7 | 0.42 | 0.084 | 551 | 0.12 | *pending* |
+| **B** | 265887 | 0.01 | 1e-5 | 500 | 1024 | **0.0068** | 5.9e6 ⚠ | 0.52 | 0.062 | 527 | 0.15 | *pending* |
+| **C** | 265888 | 0.01 | 2e-5 | 500 | 1024 | **0.0100** | 0.16 | 0.52 | 0.053 | 494 | 0.15 | *pending* |
+| **D** | 265889 | 0.01 | 1e-5 | 500 | 1536 | **0.0073** | 0.54 | 0.53 | 0.016 | 574 | 0.13 | *pending* |
+
+**What this shows (training only — the eval is the real test and is still pending):**
+- **The policy moved.** KL climbed from v2's 0.0014 to **0.0036 / 0.0068 / 0.0100 / 0.0073**;
+  B/C/D sit inside the target band [0.005–0.02], monotone with the aggressive recipe.
+  This clears H1's *precondition* — the frozen-policy failure of v2 is gone.
+- **C is the cleanest mover** (KL 0.010, stable). **B blew up transiently** (KLmax≈5.9e6
+  at one step) then recovered to 0.0068 — a stability wart, not a crash.
+- **D (c1536) truncated least** (clip 0.016 vs 0.05–0.08) — the length budget was used.
+- corr_reward ~0.52 (B/C/D) sits *below* v2's 0.625, which is the point: v2's higher
+  train reward came *without moving off base*. Train reward ≠ eval gain (K-learning #4).
+- **Open question / next step:** merge each adapter (`merge_lora.py`, cpu, no dist env)
+  and eval MATH-500 (`math_task/eval_math.py`). If accuracy clears 55.6% → **H1 confirmed**
+  (MATH failure was policy-movement). If KL rose but eval stays flat → **H2**: final-answer
+  GRPO is insufficient at 1.5B → process/verifier reward or 7B.
+
+**Infra fixes surfaced batch-submitting these four** (now folded into the scripts):
+(1) `hendrycks/competition_math` is gated on the Hub → use `nlile/hendrycks-MATH-benchmark`;
+(2) a hard-coded `MASTER_PORT=29500` makes co-scheduled colocate jobs collide with
+`EADDRINUSE` — derive a per-job port (`20000+SLURM_JOB_ID%40000`).
+
 ## 5. Cross-cluster split (H100 train ↔ GB10B vLLM rollout) — NOT achieved
 
 The original AMD topology. Status: **blocked on infrastructure, not attempted end-to-end.**
