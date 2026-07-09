@@ -39,7 +39,8 @@ def gold_answer(example: dict) -> str:
     return last_boxed(example.get("solution", ""))
 
 
-def prepare_math(dataset_name: str, split: str, max_samples: int | None, seed: int) -> Dataset:
+def prepare_math(dataset_name: str, split: str, max_samples: int | None, seed: int,
+                 tokenizer: Any = None, max_prompt_tokens: int | None = None) -> Dataset:
     ds = load_dataset(dataset_name, split=split)
     # Drop any problem that appears in the MATH-500 eval set (avoid contamination).
     try:
@@ -49,6 +50,19 @@ def prepare_math(dataset_name: str, split: str, max_samples: int | None, seed: i
         print(f"[prepare_math] removed {before - len(ds)} eval-overlap problems; {len(ds)} remain")
     except Exception as exc:  # pragma: no cover
         print(f"[prepare_math] WARNING could not filter eval overlap: {exc}")
+    # Drop the ~0.8% of MATH problems whose prompt exceeds max_prompt_tokens. vLLM's
+    # max_model_len = max_prompt_length + max_completion_length; a longer prompt (up
+    # to 1696 tokens here) overflows it and crashes generation mid-run on some seeds.
+    if tokenizer is not None and max_prompt_tokens:
+        def _fits(ex: dict) -> bool:
+            n = len(tokenizer.apply_chat_template(
+                [{"role": "system", "content": MATH_SYSTEM_PROMPT},
+                 {"role": "user", "content": ex["problem"]}],
+                tokenize=True, add_generation_prompt=True))
+            return n <= max_prompt_tokens
+        before = len(ds)
+        ds = ds.filter(_fits)
+        print(f"[prepare_math] removed {before - len(ds)} prompts > {max_prompt_tokens} tokens; {len(ds)} remain")
     if max_samples:
         ds = ds.shuffle(seed=seed).select(range(min(max_samples, len(ds))))
 
@@ -94,6 +108,7 @@ class Cfg:
     report_to: str
     run_name: str | None
     seed: int
+    max_prompt_tokens: int
 
 
 def parse_args() -> Cfg:
@@ -119,6 +134,9 @@ def parse_args() -> Cfg:
     p.add_argument("--report_to", default="wandb")
     p.add_argument("--run_name", default=None)
     p.add_argument("--seed", type=int, default=42)
+    p.add_argument("--max_prompt_tokens", type=int, default=512,
+                   help="Drop MATH problems whose prompt exceeds this many tokens "
+                        "(must be < max_model_len - completion; guards vLLM overflow).")
     return Cfg(**vars(p.parse_args()))
 
 
@@ -127,12 +145,13 @@ def main() -> None:
     import os
     os.environ.setdefault("WANDB_PROJECT", "grpo-gsm8k-simulation")
 
-    train_dataset = prepare_math(args.dataset_name, args.dataset_split, args.max_samples, args.seed)
-
     tokenizer = AutoTokenizer.from_pretrained(args.model_name_or_path, trust_remote_code=True)
     tokenizer.padding_side = "left"
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
+
+    train_dataset = prepare_math(args.dataset_name, args.dataset_split, args.max_samples,
+                                 args.seed, tokenizer=tokenizer, max_prompt_tokens=args.max_prompt_tokens)
 
     peft_config = LoraConfig(
         r=args.lora_r, lora_alpha=args.lora_alpha, lora_dropout=0.05, bias="none",
