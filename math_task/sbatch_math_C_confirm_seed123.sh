@@ -35,7 +35,10 @@ PY=.venv-colocate/bin/python
 DATASET="nlile/hendrycks-MATH-benchmark"
 SEED=123
 MAX_STEPS=500; LR=2e-5; BETA=0.01
-NUM_GEN=8; MAX_COMPLETION=1024; PER_DEV_BS=16; GRAD_ACCUM=1; VLLM_UTIL=0.35
+# VLLM_UTIL 0.50 (was 0.35): 268665 died with vLLM "No available memory for the
+# cache blocks" on a contended GPU; util only sizes the KV cache (no effect on the
+# trained model), so more headroom is free insurance for the 1.5B policy.
+NUM_GEN=8; MAX_COMPLETION=1024; PER_DEV_BS=16; GRAD_ACCUM=1; VLLM_UTIL=0.50
 REWARD_WEIGHTS="2.0 0.5"; MAX_SAMPLES=4000
 RUN_NAME="math-aggr-C-confirm-seed123"
 OUTPUT_DIR="outputs/qwen2.5-1.5b-math-grpo-${RUN_NAME}"
