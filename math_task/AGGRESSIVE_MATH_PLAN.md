@@ -155,6 +155,8 @@ The result tracks KL almost perfectly, which is the H1 signature:
 **➡️ Recommended next steps (ranked):**
 1. **Confirm C isn't noise:** +2.0 pt on 500 samples = 10 problems (~borderline).
    Re-run C with a different seed (or eval on the full MATH test) before trusting it.
+   → **IN FLIGHT:** `sbatch_math_C_confirm_seed123.sh` (seed 123, same recipe,
+   train→merge→eval in one job), **job 268665**, W&B online. *Result pending.*
 2. **Fix B's instability** (lr2e-5 or a KL/grad clip) — C already suggests the stable
    variant is the one to push; consider 700–800 steps of C to see if the gain grows.
 3. Only if C's gain doesn't hold/grow → escalate per the plan: **process / verifier
