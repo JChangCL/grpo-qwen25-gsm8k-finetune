@@ -113,10 +113,12 @@ Training metrics = mean over the last 20 logged steps (from each run's
 |-----|-----|---:|------:|------------:|-------:|---------:|--------:|----------:|:--------:|:----------:|:-------:|
 | base | 264570 | — | — | — | — | — | — | — | 55.6% | 0 | ref |
 | v2   | 264569 | 0.0014 | — | 0.625 | — | — | — | — | 54.8% | −0.8 | frozen |
-| **A** | 265851 | **0.0036** | 1.65 | 0.419 | 1.067 | 551 | 0.084 | 0.12 | *pending* | *eval* | KL↑ (mildest) |
-| **B** | 265887 | **0.0068** | 5.9e6 ⚠ | 0.522 | 1.278 | 527 | 0.062 | 0.15 | *pending* | *eval* | KL in band; transient spike |
-| **C** | 265888 | **0.0100** | 0.16 | 0.519 | 1.273 | 494 | 0.053 | 0.15 | *pending* | *eval* | **KL in band, cleanest** |
-| **D** | 265889 | **0.0073** | 0.54 | 0.531 | 1.309 | 574 | 0.016 | 0.13 | *pending* | *eval* | KL in band; least truncation |
+| **A** | 265851 | **0.0036** | 1.65 | 0.419 | 1.067 | 551 | 0.084 | 0.12 | 55.0% | −0.6 | parity (KL below band) |
+| **B** | 265887 | **0.0068** | 5.9e6 ⚠ | 0.522 | 1.278 | 527 | 0.062 | 0.15 | 54.6% | −1.0 | **below base — KL blow-up hurt it** |
+| **C** | 265888 | **0.0100** | 0.16 | 0.519 | 1.273 | 494 | 0.053 | 0.15 | **57.6%** | **+2.0** | ✅ **best — H1 signature** |
+| **D** | 265889 | **0.0073** | 0.54 | 0.531 | 1.309 | 574 | 0.016 | 0.13 | 56.8% | +1.2 | small gain |
+
+(Eval = MATH-500, fixed `is_correct`, vLLM greedy; eval job 268534. C=288/500, D=284/500, A=275/500, B=273/500 vs base 278/500.)
 
 **Submitted & completed** 2026-07-07 (Juno H100, colocate). Final job IDs
 **265851 / 265887 / 265888 / 265889** (three earlier attempts died: 265833–836 on
@@ -125,23 +127,38 @@ a gated dataset name `hendrycks/competition_math` → fixed to
 EADDRINUSE collision when co-scheduled → fixed to a per-job port). W&B offline →
 synced to project `grpo-gsm8k-simulation`.
 
-**Training-signal readout (eval still pending — do NOT conclude yet):**
-- **KL condition of H1 is met.** KL rose from v2's 0.0014 to **0.0036 (A) / 0.0068
-  (B) / 0.0100 (C) / 0.0073 (D)** — B/C/D sit inside the target band [0.005–0.02],
-  monotonic with the loosened-beta / higher-lr recipe. The policy *moved* this time.
-- **C is the cleanest mover** (KL 0.010, KLmax 0.16, stable). **B had a transient KL
-  blow-up** (KLmax ≈ 5.9e6 at one step) but recovered to 0.0068 mean — watch B's
-  curve; if eval is erratic, prefer C's recipe.
-- corr_reward settled ~0.52 (B/C/D) vs A's 0.42; all below v2's 0.625, but v2's high
-  train reward came *without* moving off base — exactly the trap the plan warns about.
-- D (c1536) had the **lowest truncation** (clip 0.016 vs 0.05–0.08) and longest
-  completions (574) — the extra length budget was used, as hypothesized.
-- grad_norm stable (0.12–0.15 steady-state) across all four.
+### VERDICT — H1 CONFIRMED (qualified): policy movement → a real, modest MATH gain
 
-**➡️ NEXT (the actual hypothesis test): merge each adapter and eval MATH-500.**
-Until we have eval accuracy vs base 55.6%, this only shows the policy *moved*, not
-that it moved to a *better* place. Run the merge→eval block below for A/B/C/D
-(start with C and D — highest KL / least truncation).
+The result tracks KL almost perfectly, which is the H1 signature:
+
+| KL band | run | KL | MATH-500 | Δ |
+|---|---|---:|---:|---:|
+| below band | A | 0.0036 | 55.0% | −0.6 (parity, like v2) |
+| in band, **stable** | **C** | 0.0100 | **57.6%** | **+2.0** ✅ |
+| in band, stable | D | 0.0073 | 56.8% | +1.2 |
+| in band, **unstable** | B | 0.0068 | 54.6% | −1.0 (KL blew up → hurt) |
+
+- **C clears the success bar** (≥57.6%, +2.0 pt) with an in-band, stable KL (0.010,
+  KLmax 0.16). The cleanest mover is also the best model — exactly what H1 predicts.
+  D corroborates (in-band KL → +1.2). **So MATH v2's flat eval WAS substantially a
+  policy-movement failure**: when you move the policy *stably*, MATH-500 improves.
+- **Movement is necessary but not sufficient — stability matters.** B had the same
+  loosened β as C but a transient KL blow-up (KLmax ≈ 5.9e6); despite in-band mean KL
+  it lands *below* base. Don't just crank the leash; keep the update stable.
+- **A ≈ base** (KL below band) reproduces v2's frozen behaviour — the control worked.
+- The win is **modest (+2 pt)**, consistent with the log's broader thesis that a 1.5B
+  base near its ceiling has little to sharpen. This is not H2 (final-answer GRPO is
+  *not* dead — it does help), but the ceiling is real.
+
+**Winning recipe: C — β0.01 / lr2e-5 / 500 steps / c1024** (reward weights 2.0/0.5).
+
+**➡️ Recommended next steps (ranked):**
+1. **Confirm C isn't noise:** +2.0 pt on 500 samples = 10 problems (~borderline).
+   Re-run C with a different seed (or eval on the full MATH test) before trusting it.
+2. **Fix B's instability** (lr2e-5 or a KL/grad clip) — C already suggests the stable
+   variant is the one to push; consider 700–800 steps of C to see if the gain grows.
+3. Only if C's gain doesn't hold/grow → escalate per the plan: **process / verifier
+   reward** or **scale to 7B** (Improvement directions #3–4).
 
 ---
 

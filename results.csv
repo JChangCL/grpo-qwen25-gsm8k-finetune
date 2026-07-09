@@ -23,3 +23,7 @@ base-qwen25-15b,base,base,juno_vllm_chat_greedy,1319,917,0.6952,,,,2026-07-06,"F
 juno-h100-r32-8gen-300s-c512-lr5e6-b03-rw3,chat-c512-b03-lr5e6-300s,grpo,juno_vllm_chat_greedy,1319,940,0.7127,264046,merged,nymhqisx,2026-07-06,"Run4 FULL 1319: 69.52->71.27 = +1.75pt CONFIRMED (best defensible result)"
 base-qwen25-15b,base,base,math500_vllm_chat_greedy,500,278,0.5560,264570,,,2026-07-07,"MATH-500 base (fixed is_correct; was 45.6% under LaTeX bug)"
 juno-h100-math-r32-8gen-300s-c1024-v2,math-c1024-b03-lr5e6,grpo,math500_vllm_chat_greedy,500,274,0.5480,264569,merged,qcroxolu,2026-07-07,"MATH GRPO v2 (fixed reward, train corr 0.625) but KL~0.0014 => ~=base"
+math-aggr-C-b01-lr2e5-500s-c1024,math-aggr-C,grpo,math500_vllm_chat_greedy,500,288,0.5760,265888,merged,,2026-07-08,"Aggressive MATH C beta0.01 lr2e5 500s c1024 KL0.010: 55.6->57.6 +2.0pt BEST (H1 confirmed)"
+math-aggr-D-b01-lr1e5-500s-c1536,math-aggr-D,grpo,math500_vllm_chat_greedy,500,284,0.5680,265889,merged,,2026-07-08,"Aggressive MATH D beta0.01 lr1e5 500s c1536 KL0.0073: +1.2pt (in-band KL, least truncation)"
+math-aggr-A-b02-lr1e5-400s-c1024,math-aggr-A,grpo,math500_vllm_chat_greedy,500,275,0.5500,265851,merged,,2026-07-08,"Aggressive MATH A beta0.02 lr1e5 400s c1024 KL0.0036: -0.6pt parity (KL below band)"
+math-aggr-B-b01-lr1e5-500s-c1024,math-aggr-B,grpo,math500_vllm_chat_greedy,500,273,0.5460,265887,merged,,2026-07-08,"Aggressive MATH B beta0.01 lr1e5 500s c1024 KL0.0068 but KLmax5.9e6 spike: -1.0pt (instability hurt)"

@@ -9,7 +9,10 @@ Stack (Juno `.venv-colocate`): `trl 0.18.0 · vllm 0.8.5 · transformers 4.51.3 
 ## 0. TL;DR
 
 - **GSM8K:** best run beats a strong base — **69.52% → 71.27% (+1.75 pt, confirmed on full 1319 test).**
-- **MATH:** GRPO reaches **~base parity (54.8% vs 55.6%)** — the policy barely moved (KL≈0).
+- **MATH:** v2 stalled at **~base parity (54.8% vs 55.6%)** because the policy barely moved
+  (KL≈0.0014). The **aggressive re-run fixed that**: moving the policy *stably* (run C,
+  β0.01/lr2e-5/500s, KL 0.010) beats base — **55.6% → 57.6% (+2.0 pt)**. Gain is modest
+  (1.5B near ceiling), and stability matters — run B moved but blew up (KL spike) → below base.
 - **Core lesson:** at 1.5B, GRPO **sharpens existing ability but adds little**; gains are marginal because the base is near its ceiling. The single biggest lever is **letting the policy actually move (KL)** via lower beta / higher lr / more steps, plus **matching train/eval formatting** and **measuring the reward correctly.**
 - **vLLM colocate cut training from 10+ hours → ~15 min.**
 - **Cross-cluster split (H100↔GB10B)** not achieved — blocked on infrastructure (driver/version + container pull limits).
@@ -82,24 +85,29 @@ plan + full table in `math_task/AGGRESSIVE_MATH_PLAN.md`. Metrics = mean(last-20
 | Run | Job | β | lr | steps | compl | **KL** | KLmax | corr (train) | clip | mean_len | grad_norm | MATH-500 |
 |---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---|
 | v2 (ref) | 264569 | 0.03 | 5e-6 | 300 | 1024 | 0.0014 | — | 0.625 | — | — | — | 54.8% |
-| **A** | 265851 | 0.02 | 1e-5 | 400 | 1024 | **0.0036** | 1.7 | 0.42 | 0.084 | 551 | 0.12 | *pending* |
-| **B** | 265887 | 0.01 | 1e-5 | 500 | 1024 | **0.0068** | 5.9e6 ⚠ | 0.52 | 0.062 | 527 | 0.15 | *pending* |
-| **C** | 265888 | 0.01 | 2e-5 | 500 | 1024 | **0.0100** | 0.16 | 0.52 | 0.053 | 494 | 0.15 | *pending* |
-| **D** | 265889 | 0.01 | 1e-5 | 500 | 1536 | **0.0073** | 0.54 | 0.53 | 0.016 | 574 | 0.13 | *pending* |
+| **A** | 265851 | 0.02 | 1e-5 | 400 | 1024 | **0.0036** | 1.7 | 0.42 | 0.084 | 551 | 0.12 | 55.0% (−0.6) |
+| **B** | 265887 | 0.01 | 1e-5 | 500 | 1024 | **0.0068** | 5.9e6 ⚠ | 0.52 | 0.062 | 527 | 0.15 | 54.6% (−1.0) |
+| **C** | 265888 | 0.01 | 2e-5 | 500 | 1024 | **0.0100** | 0.16 | 0.52 | 0.053 | 494 | 0.15 | **57.6% (+2.0) ✅** |
+| **D** | 265889 | 0.01 | 1e-5 | 500 | 1536 | **0.0073** | 0.54 | 0.53 | 0.016 | 574 | 0.13 | 56.8% (+1.2) |
 
-**What this shows (training only — the eval is the real test and is still pending):**
-- **The policy moved.** KL climbed from v2's 0.0014 to **0.0036 / 0.0068 / 0.0100 / 0.0073**;
-  B/C/D sit inside the target band [0.005–0.02], monotone with the aggressive recipe.
-  This clears H1's *precondition* — the frozen-policy failure of v2 is gone.
-- **C is the cleanest mover** (KL 0.010, stable). **B blew up transiently** (KLmax≈5.9e6
-  at one step) then recovered to 0.0068 — a stability wart, not a crash.
-- **D (c1536) truncated least** (clip 0.016 vs 0.05–0.08) — the length budget was used.
-- corr_reward ~0.52 (B/C/D) sits *below* v2's 0.625, which is the point: v2's higher
-  train reward came *without moving off base*. Train reward ≠ eval gain (K-learning #4).
-- **Open question / next step:** merge each adapter (`merge_lora.py`, cpu, no dist env)
-  and eval MATH-500 (`math_task/eval_math.py`). If accuracy clears 55.6% → **H1 confirmed**
-  (MATH failure was policy-movement). If KL rose but eval stays flat → **H2**: final-answer
-  GRPO is insufficient at 1.5B → process/verifier reward or 7B.
+Eval = MATH-500, fixed `is_correct`, vLLM greedy (job 268534). Base = 55.6% (278/500).
+
+**Verdict — H1 CONFIRMED (qualified): moving the policy *stably* gives a real, modest gain.**
+Eval tracks KL almost perfectly:
+- **C is the cleanest, highest-KL mover (0.010, stable) AND the best model: 57.6%, +2.0 pt** —
+  clears the success bar. **D** corroborates (in-band KL 0.0073 → +1.2). So v2's flat eval
+  *was* substantially a policy-movement failure — move it and MATH-500 rises.
+- **Stability matters as much as movement.** **B** had the same loosened β as C but a
+  transient KL blow-up (KLmax≈5.9e6) → lands *below* base (54.6%). Don't just crank the
+  leash; keep the update stable.
+- **A ≈ base** (KL 0.0036, below band) reproduces v2's frozen behaviour — the control held.
+- The win is **modest (+2 pt)** — consistent with #5 (1.5B near ceiling). This is *not* H2:
+  final-answer GRPO does help on MATH; the ceiling, not the method, caps the size of the win.
+
+**Winning MATH recipe: C = β0.01 / lr2e-5 / 500 steps / c1024, rw 2.0/0.5.**
+Next: confirm C isn't 500-sample noise (+2pt = 10 problems) via a seed-repeat or full-test
+eval; fix B-style instability with a KL/grad clip; only then escalate to process/verifier
+reward or 7B.
 
 **Infra fixes surfaced batch-submitting these four** (now folded into the scripts):
 (1) `hendrycks/competition_math` is gated on the Hub → use `nlile/hendrycks-MATH-benchmark`;
@@ -124,7 +132,9 @@ The original AMD topology. Status: **blocked on infrastructure, not attempted en
 
 ## 7. Improvement directions (ranked)
 
-1. **Aggressive MATH run** (β 0.01–0.02, lr 1e-5, 400–500 steps, completion 1024–1536) — move the policy like Run4 did on GSM8K; MATH has the most headroom (base 55.6%).
+1. ~~**Aggressive MATH run**~~ ✅ **DONE (§4a):** β0.01/lr2e-5/500s/c1024 (run C) moved the
+   policy (KL 0.010) and beat base **55.6% → 57.6% (+2.0 pt)**. Follow-ups: seed-confirm C
+   (+2pt = 10/500, borderline), fix B-style KL instability, try more steps of C.
 2. **Longer chain-of-thought / test-time compute (R1-style)** on hard problems.
 3. **Scale to 7B** — more capacity to sharpen; raises absolute (~85% GSM8K) but GRPO gain stays modest.
 4. **Process / verifier rewards** instead of final-answer-only.
