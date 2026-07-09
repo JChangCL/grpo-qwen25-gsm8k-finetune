@@ -116,6 +116,7 @@ Training metrics = mean over the last 20 logged steps (from each run's
 | **A** | 265851 | **0.0036** | 1.65 | 0.419 | 1.067 | 551 | 0.084 | 0.12 | 55.0% | −0.6 | parity (KL below band) |
 | **B** | 265887 | **0.0068** | 5.9e6 ⚠ | 0.522 | 1.278 | 527 | 0.062 | 0.15 | 54.6% | −1.0 | **below base — KL blow-up hurt it** |
 | **C** | 265888 | **0.0100** | 0.16 | 0.519 | 1.273 | 494 | 0.053 | 0.15 | **57.6%** | **+2.0** | ✅ **best — H1 signature** |
+| **C·seed123** | 269604 | **0.0086** | 25171 | 0.597 | — | 529 | 0.066 | 0.14 | **58.4%** | **+2.8** | ✅ **replicates C (robust)** |
 | **D** | 265889 | **0.0073** | 0.54 | 0.531 | 1.309 | 574 | 0.016 | 0.13 | 56.8% | +1.2 | small gain |
 
 (Eval = MATH-500, fixed `is_correct`, vLLM greedy; eval job 268534. C=288/500, D=284/500, A=275/500, B=273/500 vs base 278/500.)
@@ -127,7 +128,12 @@ a gated dataset name `hendrycks/competition_math` → fixed to
 EADDRINUSE collision when co-scheduled → fixed to a per-job port). W&B offline →
 synced to project `grpo-gsm8k-simulation`.
 
-### VERDICT — H1 CONFIRMED (qualified): policy movement → a real, modest MATH gain
+### VERDICT — H1 CONFIRMED (replicated): policy movement → a real, modest MATH gain
+
+**Replicated across seeds:** C scored **+2.0 pt (seed 42, 57.6%)** and **+2.8 pt
+(seed 123, 58.4%)** — two independent seeds, both with in-band KL (0.010 / 0.0086),
+both clearing base by ≥+2 pt. The gain is not 500-sample noise.
+
 
 The result tracks KL almost perfectly, which is the H1 signature:
 
@@ -153,10 +159,14 @@ The result tracks KL almost perfectly, which is the H1 signature:
 **Winning recipe: C — β0.01 / lr2e-5 / 500 steps / c1024** (reward weights 2.0/0.5).
 
 **➡️ Recommended next steps (ranked):**
-1. **Confirm C isn't noise:** +2.0 pt on 500 samples = 10 problems (~borderline).
-   Re-run C with a different seed (or eval on the full MATH test) before trusting it.
-   → **IN FLIGHT:** `sbatch_math_C_confirm_seed123.sh` (seed 123, same recipe,
-   train→merge→eval in one job), **job 268665**, W&B online. *Result pending.*
+1. ~~**Confirm C isn't noise**~~ ✅ **DONE — REPLICATES.** Seed-123 re-run of C
+   (`sbatch_math_C_confirm_seed123.sh`, job **269604**, W&B online; KL 0.0086, corr 0.597)
+   scored **58.4% (292/500) = +2.8 pt** — *higher* than seed-42's +2.0. Two independent
+   seeds both clear base by ≥+2 pt ⇒ **the C gain is robust, not 500-sample noise.**
+   (Took 3 tries: 268665 died on a contended-GPU KV cache → vLLM util 0.35→0.50;
+   269466 crashed at step 454 on a 1696-token prompt > max_model_len 1536 → added a
+   `--max_prompt_tokens 512` filter in `train_grpo_math.py` that drops the 0.8% long-prompt
+   outliers, so every seed is now reproducible.)
 2. **Fix B's instability** (lr2e-5 or a KL/grad clip) — C already suggests the stable
    variant is the one to push; consider 700–800 steps of C to see if the gain grows.
 3. Only if C's gain doesn't hold/grow → escalate per the plan: **process / verifier

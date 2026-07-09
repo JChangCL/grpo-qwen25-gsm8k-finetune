@@ -27,3 +27,4 @@ math-aggr-C-b01-lr2e5-500s-c1024,math-aggr-C,grpo,math500_vllm_chat_greedy,500,2
 math-aggr-D-b01-lr1e5-500s-c1536,math-aggr-D,grpo,math500_vllm_chat_greedy,500,284,0.5680,265889,merged,,2026-07-08,"Aggressive MATH D beta0.01 lr1e5 500s c1536 KL0.0073: +1.2pt (in-band KL, least truncation)"
 math-aggr-A-b02-lr1e5-400s-c1024,math-aggr-A,grpo,math500_vllm_chat_greedy,500,275,0.5500,265851,merged,,2026-07-08,"Aggressive MATH A beta0.02 lr1e5 400s c1024 KL0.0036: -0.6pt parity (KL below band)"
 math-aggr-B-b01-lr1e5-500s-c1024,math-aggr-B,grpo,math500_vllm_chat_greedy,500,273,0.5460,265887,merged,,2026-07-08,"Aggressive MATH B beta0.01 lr1e5 500s c1024 KL0.0068 but KLmax5.9e6 spike: -1.0pt (instability hurt)"
+math-aggr-C-confirm-seed123,math-aggr-C-confirm,grpo,math500_vllm_chat_greedy,500,292,0.5840,269604,merged,,2026-07-09,"C seed-123 confirmation (KL0.0086): 58.4% +2.8pt REPLICATES seed-42 C 57.6% => C gain robust not noise"

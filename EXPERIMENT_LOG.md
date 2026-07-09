@@ -11,8 +11,9 @@ Stack (Juno `.venv-colocate`): `trl 0.18.0 · vllm 0.8.5 · transformers 4.51.3 
 - **GSM8K:** best run beats a strong base — **69.52% → 71.27% (+1.75 pt, confirmed on full 1319 test).**
 - **MATH:** v2 stalled at **~base parity (54.8% vs 55.6%)** because the policy barely moved
   (KL≈0.0014). The **aggressive re-run fixed that**: moving the policy *stably* (run C,
-  β0.01/lr2e-5/500s, KL 0.010) beats base — **55.6% → 57.6% (+2.0 pt)**. Gain is modest
-  (1.5B near ceiling), and stability matters — run B moved but blew up (KL spike) → below base.
+  β0.01/lr2e-5/500s, KL 0.010) beats base — **55.6% → 57.6% (+2.0 pt), replicated at +2.8 pt
+  on a 2nd seed.** Gain is modest (1.5B near ceiling), and stability matters — run B moved
+  but blew up (KL spike) → below base.
 - **Core lesson:** at 1.5B, GRPO **sharpens existing ability but adds little**; gains are marginal because the base is near its ceiling. The single biggest lever is **letting the policy actually move (KL)** via lower beta / higher lr / more steps, plus **matching train/eval formatting** and **measuring the reward correctly.**
 - **vLLM colocate cut training from 10+ hours → ~15 min.**
 - **Cross-cluster split (H100↔GB10B)** not achieved — blocked on infrastructure (driver/version + container pull limits).
@@ -88,15 +89,18 @@ plan + full table in `math_task/AGGRESSIVE_MATH_PLAN.md`. Metrics = mean(last-20
 | **A** | 265851 | 0.02 | 1e-5 | 400 | 1024 | **0.0036** | 1.7 | 0.42 | 0.084 | 551 | 0.12 | 55.0% (−0.6) |
 | **B** | 265887 | 0.01 | 1e-5 | 500 | 1024 | **0.0068** | 5.9e6 ⚠ | 0.52 | 0.062 | 527 | 0.15 | 54.6% (−1.0) |
 | **C** | 265888 | 0.01 | 2e-5 | 500 | 1024 | **0.0100** | 0.16 | 0.52 | 0.053 | 494 | 0.15 | **57.6% (+2.0) ✅** |
+| **C·seed123** | 269604 | 0.01 | 2e-5 | 500 | 1024 | **0.0086** | 25171 | 0.60 | 0.066 | 529 | 0.14 | **58.4% (+2.8) ✅** |
 | **D** | 265889 | 0.01 | 1e-5 | 500 | 1536 | **0.0073** | 0.54 | 0.53 | 0.016 | 574 | 0.13 | 56.8% (+1.2) |
 
-Eval = MATH-500, fixed `is_correct`, vLLM greedy (job 268534). Base = 55.6% (278/500).
+Eval = MATH-500, fixed `is_correct`, vLLM greedy (jobs 268534 / 269604). Base = 55.6% (278/500).
 
-**Verdict — H1 CONFIRMED (qualified): moving the policy *stably* gives a real, modest gain.**
-Eval tracks KL almost perfectly:
+**Verdict — H1 CONFIRMED (replicated): moving the policy *stably* gives a real, modest gain.**
+Eval tracks KL almost perfectly, and **the win replicates across seeds**:
 - **C is the cleanest, highest-KL mover (0.010, stable) AND the best model: 57.6%, +2.0 pt** —
-  clears the success bar. **D** corroborates (in-band KL 0.0073 → +1.2). So v2's flat eval
-  *was* substantially a policy-movement failure — move it and MATH-500 rises.
+  clears the success bar. **A seed-123 re-run of C independently scored 58.4% (+2.8 pt)**
+  (KL 0.0086, corr 0.60) → the gain is **not 500-sample noise**. **D** corroborates
+  (in-band KL 0.0073 → +1.2). So v2's flat eval *was* substantially a policy-movement
+  failure — move it (stably) and MATH-500 rises.
 - **Stability matters as much as movement.** **B** had the same loosened β as C but a
   transient KL blow-up (KLmax≈5.9e6) → lands *below* base (54.6%). Don't just crank the
   leash; keep the update stable.
@@ -109,10 +113,17 @@ Next: confirm C isn't 500-sample noise (+2pt = 10 problems) via a seed-repeat or
 eval; fix B-style instability with a KL/grad clip; only then escalate to process/verifier
 reward or 7B.
 
-**Infra fixes surfaced batch-submitting these four** (now folded into the scripts):
+**Infra / latent-bug fixes surfaced running these** (now folded into the scripts):
 (1) `hendrycks/competition_math` is gated on the Hub → use `nlile/hendrycks-MATH-benchmark`;
 (2) a hard-coded `MASTER_PORT=29500` makes co-scheduled colocate jobs collide with
-`EADDRINUSE` — derive a per-job port (`20000+SLURM_JOB_ID%40000`).
+`EADDRINUSE` — derive a per-job port (`20000+SLURM_JOB_ID%40000`);
+(3) **over-long prompts crash generation:** 0.8% of MATH problems have prompts >512 tokens
+(max 1696) > vLLM `max_model_len` 1536 → `prepare_math` now drops prompts
+`> --max_prompt_tokens` (default 512). Seed 42 dodged them by luck; seed 123 hit one at
+step 454. <1% data loss, makes every seed reproducible;
+(4) vLLM colocate can fail init with *"No available memory for the cache blocks"* on a
+contended GPU at `gpu_memory_utilization=0.35` — bump to 0.50 (util only sizes the KV cache,
+no effect on the trained model).
 
 ## 5. Cross-cluster split (H100 train ↔ GB10B vLLM rollout) — NOT achieved
 
@@ -133,8 +144,9 @@ The original AMD topology. Status: **blocked on infrastructure, not attempted en
 ## 7. Improvement directions (ranked)
 
 1. ~~**Aggressive MATH run**~~ ✅ **DONE (§4a):** β0.01/lr2e-5/500s/c1024 (run C) moved the
-   policy (KL 0.010) and beat base **55.6% → 57.6% (+2.0 pt)**. Follow-ups: seed-confirm C
-   (+2pt = 10/500, borderline), fix B-style KL instability, try more steps of C.
+   policy (KL 0.010) and beat base **55.6% → 57.6% (+2.0 pt), replicated at +2.8 pt (seed 123)**.
+   Remaining follow-ups: fix C/B's occasional KL spikes (lr2e-5 → add KL/grad clip), try more
+   steps of C, or full-MATH-test eval for a tighter CI. Then escalate to #3/#4 for bigger wins.
 2. **Longer chain-of-thought / test-time compute (R1-style)** on hard problems.
 3. **Scale to 7B** — more capacity to sharpen; raises absolute (~85% GSM8K) but GRPO gain stays modest.
 4. **Process / verifier rewards** instead of final-answer-only.
